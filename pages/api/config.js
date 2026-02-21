@@ -95,31 +95,31 @@ export default async function handler(req, res) {
 function sanitize(obj, isMember, isPremium) {
   const allowed = ['tabFormat', 'sniperAlert', 'colorThresholds', 'nickDetect'];
   if (isMember) allowed.push('tags', 'blacklist', 'friends');
-  // styleは全員保存可能だがPremium限定キーはサーバー側で制限
-  if ('style' in obj) {
-    const style = obj.style;
-    if (style && typeof style === 'object') {
-      const safeStyle = {
-        theme: ['default', 'midnight'].includes(style.theme) ? style.theme : (isPremium ? style.theme : 'default'),
-        font: isPremium ? style.font : 'inter',
-      };
-      if (isPremium) {
-        safeStyle.customBgStart     = style.customBgStart;
-        safeStyle.customBgEnd       = style.customBgEnd;
-        safeStyle.customAccentStart = style.customAccentStart;
-        safeStyle.customAccentEnd   = style.customAccentEnd;
-        safeStyle.gradientBg        = style.gradientBg;
-        safeStyle.gradientAccent    = style.gradientAccent;
-      }
-      obj = { ...obj, style: safeStyle };
-    }
-    allowed.push('style');
-  }
+  allowed.push('style');
 
   const out = {};
   for (const k of allowed) {
     if (k in obj) out[k] = obj[k];
   }
+
+  if (out.style && typeof out.style === 'object') {
+    const s = out.style;
+    out.style = {
+      theme: isPremium
+        ? s.theme
+        : (['default', 'midnight'].includes(s.theme) ? s.theme : 'default'),
+      font: isPremium ? s.font : 'inter',
+      ...(isPremium ? {
+        customBgStart:     s.customBgStart,
+        customBgEnd:       s.customBgEnd,
+        customAccentStart: s.customAccentStart,
+        customAccentEnd:   s.customAccentEnd,
+        gradientBg:        s.gradientBg,
+        gradientAccent:    s.gradientAccent,
+      } : {}),
+    };
+  }
+
   return out;
 }
 
