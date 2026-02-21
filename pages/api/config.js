@@ -4,7 +4,6 @@ import supabase from '../../lib/supabase';
 
 const MEMBER_ROLE = process.env.DISCORD_MEMBER_ROLE || 'Member';
 const ROLE_GATED_KEYS = ['tags', 'blacklist', 'friends'];
-const allowed = ['tabFormat', 'sniperAlert', 'colorThresholds', 'nickDetect', 'style'];
 
 export default async function handler(req, res) {
   let discordId = null;
