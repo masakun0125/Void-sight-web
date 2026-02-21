@@ -5,11 +5,28 @@ import supabase from '../../../lib/supabase';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+const VALID_PRICES = [
+  process.env.STRIPE_PRICE_30D,
+  process.env.STRIPE_PRICE_90D,
+  process.env.STRIPE_PRICE_180D,
+  process.env.STRIPE_PRICE_1Y,
+];
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const session = await getServerSession(req, res, authOptions);
   if (!session?.discordId) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { priceId } = req.body;
+
+  // priceIdが未指定の場合は30日プランをデフォルトに
+  const resolvedPriceId = priceId || process.env.STRIPE_PRICE_30D;
+
+  // 不正なpriceIdを弾く
+  if (!VALID_PRICES.includes(resolvedPriceId)) {
+    return res.status(400).json({ error: 'Invalid price ID' });
+  }
 
   const { data: user } = await supabase
     .from('users')
@@ -34,9 +51,9 @@ export default async function handler(req, res) {
     customer: customerId,
     mode: 'subscription',
     payment_method_types: ['card'],
-    line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+    line_items: [{ price: resolvedPriceId, quantity: 1 }],
     success_url: `${process.env.NEXTAUTH_URL}/dashboard?upgraded=true`,
-    cancel_url: `${process.env.NEXTAUTH_URL}/dashboard`,
+    cancel_url: `${process.env.NEXTAUTH_URL}/premium`,
   });
 
   return res.status(200).json({ url: checkoutSession.url });
