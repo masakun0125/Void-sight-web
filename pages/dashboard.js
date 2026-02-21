@@ -136,15 +136,8 @@ export default function Dashboard() {
     } finally { setGenning(false); }
   }
 
-  async function handleUpgrade() {
-    setUpgrading(true);
-    try {
-      const res = await fetch('/api/stripe/checkout', { method: 'POST' });
-      const data = await res.json();
-      if (data.url) window.location.href = data.url;
-    } catch {
-      setUpgrading(false);
-    }
+  function handleUpgrade() {
+    router.push('/premium');
   }
 
   if (status !== 'authenticated' || !cfg) return <Loading />;
