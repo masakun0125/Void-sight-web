@@ -42,21 +42,44 @@ const TABS = [
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [cfg, setCfg]         = useState(null);
-  const [isMember, setMember] = useState(false);
-  const [activeTab, setTab]   = useState('display');
-  const [saveState, setSave]  = useState('idle');
-  const [token, setToken]     = useState('');
-  const [genning, setGenning] = useState(false);
-  const [tagForm, setTagForm] = useState({ name:'', tag:'' });
-  const [blForm,  setBlForm]  = useState('');
-  const [frForm,  setFrForm]  = useState('');
-  const saveTimer = useRef(null);
+  const [cfg, setCfg]           = useState(null);
+  const [isMember, setMember]   = useState(false);
+  const [isPremium, setPremium] = useState(false);
+  const [activeTab, setTab]     = useState('display');
+  const [saveState, setSave]    = useState('idle');
+  const [token, setToken]       = useState('');
+  const [genning, setGenning]   = useState(false);
+  const [tagForm, setTagForm]   = useState({ name:'', tag:'' });
+  const [blForm,  setBlForm]    = useState('');
+  const [frForm,  setFrForm]    = useState('');
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [upgrading, setUpgrading]     = useState(false);
+  const saveTimer    = useRef(null);
+  const profileRef   = useRef(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
     if (status === 'authenticated')   load();
   }, [status]);
+
+  // プロフィールパネル外クリックで閉じる
+  useEffect(() => {
+    function handleClick(e) {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  // upgraded=true のクエリがあればセッション更新
+  useEffect(() => {
+    if (router.query.upgraded === 'true') {
+      load();
+      router.replace('/dashboard');
+    }
+  }, [router.query]);
 
   async function load() {
     try {
@@ -66,6 +89,7 @@ export default function Dashboard() {
       const { _meta, ...rest } = data;
       setCfg({ ...DEFAULT_CFG, ...rest });
       setMember(_meta?.isMember ?? false);
+      setPremium(_meta?.isPremium ?? false);
     } catch { setCfg(DEFAULT_CFG); }
   }
 
@@ -112,6 +136,17 @@ export default function Dashboard() {
     } finally { setGenning(false); }
   }
 
+  async function handleUpgrade() {
+    setUpgrading(true);
+    try {
+      const res = await fetch('/api/stripe/checkout', { method: 'POST' });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch {
+      setUpgrading(false);
+    }
+  }
+
   if (status !== 'authenticated' || !cfg) return <Loading />;
 
   const visibleTabs = TABS.filter(t => !t.memberOnly || isMember);
@@ -120,7 +155,7 @@ export default function Dashboard() {
     <>
       <Head>
         <title>VØID Sight – Dashboard</title>
-        <link rel="icon" href="/voidsight.png" />
+        <link rel="icon" href="/favicon.png" />
       </Head>
       <div style={S.root}>
 
@@ -135,16 +170,75 @@ export default function Dashboard() {
                   <span style={{ color:'var(--acid)' }}>✦</span> Member
                 </span>
               )}
+              {isPremium && (
+                <span style={S.premiumBadge}>
+                  <span>★</span> Premium
+                </span>
+              )}
               <span style={{ ...S.saveIndicator, ...(saveState !== 'idle' ? S.saveVisible : {}) }}>
                 {saveState === 'saving' && <><Spinner /> Saving</>}
                 {saveState === 'saved'  && <><span style={{color:'var(--acid)'}}>✓</span> Saved</>}
                 {saveState === 'error'  && <span style={{color:'var(--red)'}}>✕ Error</span>}
               </span>
-              {session.user?.image && <img src={session.user.image} alt="" style={S.avatar} />}
-              <span style={S.uname}>{session.user?.name}</span>
-              <button style={S.logoutBtn} onClick={() => signOut({ callbackUrl: '/login' })}>
-                Logout
-              </button>
+
+              {/* プロフィールアイコン */}
+              <div style={{ position:'relative' }} ref={profileRef}>
+                {session.user?.image && (
+                  <img
+                    src={session.user.image}
+                    alt=""
+                    style={{ ...S.avatar, cursor:'pointer' }}
+                    onClick={() => setProfileOpen(v => !v)}
+                  />
+                )}
+
+                {/* プロフィールパネル */}
+                {profileOpen && (
+                  <div style={S.profilePanel}>
+                    <div style={S.profileTop}>
+                      {session.user?.image && (
+                        <img src={session.user.image} alt="" style={S.profileAvatar} />
+                      )}
+                      <div>
+                        <p style={S.profileName}>{session.user?.name}</p>
+                        <div style={{ display:'flex', gap:4, marginTop:4, flexWrap:'wrap' }}>
+                          {isMember && (
+                            <span style={S.memberBadge}>
+                              <span style={{ color:'var(--acid)' }}>✦</span> Member
+                            </span>
+                          )}
+                          {isPremium && (
+                            <span style={S.premiumBadge}>★ Premium</span>
+                          )}
+                          {!isMember && !isPremium && (
+                            <span style={S.freeBadge}>Free</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={S.profileDivider} />
+
+                    {!isPremium && (
+                      <button
+                        style={{ ...S.upgradeBtn, opacity: upgrading ? 0.6 : 1 }}
+                        onClick={handleUpgrade}
+                        disabled={upgrading}
+                      >
+                        {upgrading ? '処理中...' : '★ Premiumにアップグレード'}
+                        <span style={S.upgradePrize}>月額300円</span>
+                      </button>
+                    )}
+
+                    <button
+                      style={S.logoutBtnPanel}
+                      onClick={() => signOut({ callbackUrl: '/login' })}
+                    >
+                      ログアウト
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
@@ -479,6 +573,16 @@ const S = {
     padding:'0.2rem 0.6rem', border:'1px solid rgba(181,242,61,0.3)',
     color:'var(--acid)', borderRadius:2,
   },
+  premiumBadge: {
+    fontFamily:'var(--mono)', fontSize:'0.65rem', letterSpacing:'0.1em',
+    padding:'0.2rem 0.6rem', border:'1px solid rgba(250,204,21,0.4)',
+    color:'#facc15', borderRadius:2,
+  },
+  freeBadge: {
+    fontFamily:'var(--mono)', fontSize:'0.65rem', letterSpacing:'0.1em',
+    padding:'0.2rem 0.6rem', border:'1px solid var(--border)',
+    color:'var(--dim)', borderRadius:2,
+  },
   saveIndicator: {
     fontFamily:'var(--mono)', fontSize:'0.7rem', color:'var(--mid)',
     display:'flex', alignItems:'center', gap:4,
@@ -486,6 +590,33 @@ const S = {
   },
   saveVisible: { opacity:1 },
   avatar: { width:26, height:26, borderRadius:'50%', border:'1px solid var(--border2)' },
+  profilePanel: {
+    position:'absolute', top:'calc(100% + 10px)', right:0,
+    background:'var(--panel)', border:'1px solid var(--border2)',
+    borderRadius:4, padding:'1rem', minWidth:220, zIndex:200,
+    boxShadow:'0 8px 32px rgba(0,0,0,0.5)',
+    animation:'fadeUp 0.15s ease',
+  },
+  profileTop: { display:'flex', alignItems:'center', gap:10, marginBottom:'0.75rem' },
+  profileAvatar: { width:40, height:40, borderRadius:'50%', border:'1px solid var(--border2)' },
+  profileName: { fontFamily:'var(--mono)', fontSize:'0.85rem', color:'var(--text)', fontWeight:700 },
+  profileDivider: { height:1, background:'var(--border)', marginBottom:'0.75rem' },
+  upgradeBtn: {
+    width:'100%', padding:'0.6rem 1rem',
+    background:'linear-gradient(135deg, #facc15, #f97316)',
+    border:'none', borderRadius:2, color:'#000',
+    fontWeight:700, fontSize:'0.82rem', letterSpacing:'0.05em',
+    cursor:'pointer', marginBottom:'0.5rem',
+    display:'flex', alignItems:'center', justifyContent:'space-between',
+    transition:'opacity 0.15s',
+  },
+  upgradePrize: { fontSize:'0.7rem', fontFamily:'var(--mono)', opacity:0.8 },
+  logoutBtnPanel: {
+    width:'100%', padding:'0.5rem 1rem',
+    background:'transparent', border:'1px solid var(--border)',
+    color:'var(--dim)', borderRadius:2, fontSize:'0.8rem',
+    cursor:'pointer', textAlign:'left',
+  },
   uname: { fontFamily:'var(--mono)', fontSize:'0.75rem', color:'var(--mid)' },
   logoutBtn: {
     background:'transparent', border:'1px solid var(--border2)',
