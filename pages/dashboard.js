@@ -45,7 +45,7 @@ export default function Dashboard() {
   const [cfg, setCfg]         = useState(null);
   const [isMember, setMember] = useState(false);
   const [activeTab, setTab]   = useState('display');
-  const [saveState, setSave]  = useState('idle'); // idle | saving | saved | error
+  const [saveState, setSave]  = useState('idle');
   const [token, setToken]     = useState('');
   const [genning, setGenning] = useState(false);
   const [tagForm, setTagForm] = useState({ name:'', tag:'' });
@@ -92,7 +92,6 @@ export default function Dashboard() {
     }
   }, [cfg]);
 
-  // 設定変更 + 自動保存 (debounce)
   function update(path, value) {
     const next = JSON.parse(JSON.stringify(cfg));
     const keys = path.split('.');
@@ -119,25 +118,23 @@ export default function Dashboard() {
 
   return (
     <>
-      <Head><title>VØID Sight – Dashboard</title></Head>
+      <Head>
+        <title>VØID Sight – Dashboard</title>
+        <link rel="icon" href="/voidsight.png" />
+      </Head>
       <div style={S.root}>
 
-        {/* ヘッダー */}
         <header style={S.header}>
           <div style={S.hInner}>
             <div style={S.hLogo}>
-              <span style={{ color:'var(--voidL)' }}>VØ</span>
-              <span style={{ color:'var(--acid)' }}>ID</span>
-              <span style={{ color:'var(--dim)', fontFamily:'var(--mono)', fontSize:'0.75rem', marginLeft:6 }}>SIGHT</span>
+              <img src="/voidsight.png" alt="VOID SIGHT" style={{ height:28, objectFit:'contain' }} />
             </div>
             <div style={S.hRight}>
-              {/* ロールバッジ */}
               {isMember && (
                 <span style={S.memberBadge}>
                   <span style={{ color:'var(--acid)' }}>✦</span> Member
                 </span>
               )}
-              {/* 保存状態 */}
               <span style={{ ...S.saveIndicator, ...(saveState !== 'idle' ? S.saveVisible : {}) }}>
                 {saveState === 'saving' && <><Spinner /> Saving</>}
                 {saveState === 'saved'  && <><span style={{color:'var(--acid)'}}>✓</span> Saved</>}
@@ -153,7 +150,6 @@ export default function Dashboard() {
         </header>
 
         <main style={S.main}>
-          {/* タブ */}
           <nav style={S.tabNav}>
             {visibleTabs.map(t => (
               <button
@@ -165,7 +161,6 @@ export default function Dashboard() {
                 {t.memberOnly && <span style={S.memberDot}>✦</span>}
               </button>
             ))}
-            {/* 非メンバーにはロック表示 */}
             {!isMember && (
               <div style={S.lockedTab}>
                 <span style={{ color:'var(--dim)' }}>🔒</span> Tags & Lists
@@ -176,7 +171,6 @@ export default function Dashboard() {
 
           <div style={S.panel}>
 
-            {/* ── Display ── */}
             {activeTab === 'display' && (
               <Section title="TAB_FORMAT" desc="BedWarsのタブ表示フォーマット">
                 {[
@@ -202,7 +196,6 @@ export default function Dashboard() {
               </Section>
             )}
 
-            {/* ── Sniper Alert ── */}
             {activeTab === 'alert' && (
               <Section title="SNIPER_ALERT" desc="強プレイヤーが入ったときにチャットで通知する閾値">
                 <div style={S.row2}>
@@ -223,7 +216,6 @@ export default function Dashboard() {
               </Section>
             )}
 
-            {/* ── Colors ── */}
             {activeTab === 'colors' && (
               <Section title="COLOR_THRESHOLDS" desc="統計値の範囲に応じた色設定">
                 {['fkdr','wlr','kdr'].map(stat => (
@@ -269,10 +261,8 @@ export default function Dashboard() {
               </Section>
             )}
 
-            {/* ── Tags & Lists (Member only) ── */}
             {activeTab === 'tags' && isMember && (
               <Section title="TAGS_AND_LISTS" desc="プレイヤーへのタグ・BL・フレンド管理">
-
                 <SubSection title="TAGS">
                   <div style={S.addRow}>
                     <input style={S.txtIn} placeholder="Player" value={tagForm.name}
@@ -368,7 +358,6 @@ export default function Dashboard() {
               </Section>
             )}
 
-            {/* ── Token ── */}
             {activeTab === 'token' && (
               <Section title="LOCAL_TOKEN" desc="VØID SightのローカルクライアントとWebを接続するトークン">
                 <p style={S.desc2}>
@@ -405,7 +394,6 @@ export default function Dashboard() {
   );
 }
 
-// ── サブコンポーネント ──────────────────────────────────────
 function Loading() {
   return (
     <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -473,7 +461,6 @@ function Empty() {
     color:'var(--dim)', padding:'0.4rem 0.5rem' }}>No entries</p>;
 }
 
-// ── スタイル ─────────────────────────────────────────────────
 const S = {
   root: { minHeight:'100vh' },
   header: {
@@ -485,7 +472,7 @@ const S = {
     maxWidth:960, margin:'0 auto', padding:'0 1.5rem',
     height:52, display:'flex', alignItems:'center', justifyContent:'space-between',
   },
-  hLogo: { fontFamily:'var(--sans)', fontWeight:800, fontSize:'1.3rem', letterSpacing:'-0.02em' },
+  hLogo: { display:'flex', alignItems:'center' },
   hRight: { display:'flex', alignItems:'center', gap:10 },
   memberBadge: {
     fontFamily:'var(--mono)', fontSize:'0.65rem', letterSpacing:'0.1em',
