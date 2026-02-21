@@ -9,15 +9,15 @@ const PLANS = [
     label: '30日',
     price: 300,
     per: '月額',
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_30D,
-    badge: null,
+    priceId: 'price_1T3G0O3TYZXxpT9kfxDZzyeD',
+    badge: '割引なし',
   },
   {
     id: '90d',
     label: '90日',
     price: 800,
     per: '3ヶ月',
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_90D,
+    priceId: 'price_1T3Gz53TYZXxpT9kk3wbA1ND',
     badge: '11% OFF',
   },
   {
@@ -25,7 +25,7 @@ const PLANS = [
     label: '180日',
     price: 1500,
     per: '6ヶ月',
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_180D,
+    priceId: 'price_1T3GzG3TYZXxpT9k9gjOReGD',
     badge: '17% OFF',
   },
   {
@@ -33,13 +33,11 @@ const PLANS = [
     label: '1年',
     price: 2800,
     per: '年額',
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_1Y,
+    priceId: 'price_1T3Gzg3TYZXxpT9kCQg1H9JJ',
     badge: '22% OFF',
     popular: true,
   },
-];
-
-const FEATURES = [
+];const FEATURES = [
   'クラウド設定同期（複数PC対応）',
   'カスタムカラーテーマ',
   '統計の履歴保存',
