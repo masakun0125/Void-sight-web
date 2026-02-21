@@ -39,47 +39,95 @@ const TABS = [
   { id:'token',    label:'Local Token' },
 ];
 
+const FREE_THEMES = ['default', 'midnight'];
+const PREMIUM_THEMES = ['blood', 'ghost', 'gold', 'custom'];
+const ALL_THEMES = [
+  { id:'default',  label:'Default',  accent:'#b5f23d', bg:'#070709' },
+  { id:'midnight', label:'Midnight', accent:'#a78bfa', bg:'#06061a' },
+  { id:'blood',    label:'Blood',    accent:'#ff4d6d', bg:'#0a0608', premium: true },
+  { id:'ghost',    label:'Ghost',    accent:'#f0f0f5', bg:'#111114', premium: true },
+  { id:'gold',     label:'Gold',     accent:'#facc15', bg:'#080700', premium: true },
+  { id:'custom',   label:'Custom',   accent:null,      bg:null,      premium: true },
+];
+
+const FONTS = [
+  { id:'inter',        label:'Inter',         css:"'Inter', system-ui, sans-serif" },
+  { id:'jetbrains',    label:'JetBrains Mono',css:"'JetBrains Mono', monospace" },
+  { id:'orbitron',     label:'Orbitron',      css:"'Orbitron', sans-serif" },
+  { id:'rajdhani',     label:'Rajdhani',      css:"'Rajdhani', sans-serif" },
+  { id:'exo2',         label:'Exo 2',         css:"'Exo 2', sans-serif" },
+];
+
+const DEFAULT_STYLE = {
+  theme: 'default',
+  font: 'inter',
+  customBgStart:     '#070709',
+  customBgEnd:       '#070709',
+  customAccentStart: '#b5f23d',
+  customAccentEnd:   '#b5f23d',
+  gradientBg:      false,
+  gradientAccent:  false,
+};
+
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [cfg, setCfg]           = useState(null);
-  const [isMember, setMember]   = useState(false);
-  const [isPremium, setPremium] = useState(false);
-  const [activeTab, setTab]     = useState('display');
-  const [saveState, setSave]    = useState('idle');
-  const [token, setToken]       = useState('');
-  const [genning, setGenning]   = useState(false);
-  const [tagForm, setTagForm]   = useState({ name:'', tag:'' });
-  const [blForm,  setBlForm]    = useState('');
-  const [frForm,  setFrForm]    = useState('');
+  const [cfg, setCfg]             = useState(null);
+  const [isMember, setMember]     = useState(false);
+  const [isPremium, setPremium]   = useState(false);
+  const [activeTab, setTab]       = useState('display');
+  const [saveState, setSave]      = useState('idle');
+  const [token, setToken]         = useState('');
+  const [genning, setGenning]     = useState(false);
+  const [tagForm, setTagForm]     = useState({ name:'', tag:'' });
+  const [blForm,  setBlForm]      = useState('');
+  const [frForm,  setFrForm]      = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
-  const [upgrading, setUpgrading]     = useState(false);
-  const saveTimer    = useRef(null);
-  const profileRef   = useRef(null);
+  const [styleOpen,   setStyleOpen]   = useState(false);
+  const [style, setStyle]             = useState(DEFAULT_STYLE);
+  const saveTimer   = useRef(null);
+  const profileRef  = useRef(null);
+  const styleRef    = useRef(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
     if (status === 'authenticated')   load();
   }, [status]);
 
-  // プロフィールパネル外クリックで閉じる
+  // 外クリックで閉じる
   useEffect(() => {
     function handleClick(e) {
-      if (profileRef.current && !profileRef.current.contains(e.target)) {
-        setProfileOpen(false);
-      }
+      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
+      if (styleRef.current   && !styleRef.current.contains(e.target))   setStyleOpen(false);
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // upgraded=true のクエリがあればセッション更新
+  // upgraded=true
   useEffect(() => {
     if (router.query.upgraded === 'true') {
       load();
       router.replace('/dashboard');
     }
   }, [router.query]);
+
+  // スタイル適用
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-theme', style.theme);
+    root.style.setProperty('--sans', FONTS.find(f => f.id === style.font)?.css || FONTS[0].css);
+    if (style.theme === 'custom') {
+      root.style.setProperty('--custom-bg-start',     style.customBgStart);
+      root.style.setProperty('--custom-bg-end',       style.gradientBg ? style.customBgEnd : style.customBgStart);
+      root.style.setProperty('--custom-accent-start', style.customAccentStart);
+      root.style.setProperty('--custom-accent-end',   style.gradientAccent ? style.customAccentEnd : style.customAccentStart);
+    }
+    // bg gradient
+    if (style.gradientBg && style.theme !== 'custom') {
+      root.style.setProperty('--bg-end', style.customBgEnd);
+    }
+  }, [style]);
 
   async function load() {
     try {
@@ -90,6 +138,7 @@ export default function Dashboard() {
       setCfg({ ...DEFAULT_CFG, ...rest });
       setMember(_meta?.isMember ?? false);
       setPremium(_meta?.isPremium ?? false);
+      if (rest.style) setStyle({ ...DEFAULT_STYLE, ...rest.style });
     } catch { setCfg(DEFAULT_CFG); }
   }
 
@@ -125,6 +174,15 @@ export default function Dashboard() {
     setCfg(next);
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => save(next), 800);
+  }
+
+  function updateStyle(key, value) {
+    const next = { ...style, [key]: value };
+    setStyle(next);
+    const nextCfg = { ...cfg, style: next };
+    setCfg(nextCfg);
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => save(nextCfg), 800);
   }
 
   async function genToken() {
@@ -164,15 +222,136 @@ export default function Dashboard() {
                 </span>
               )}
               {isPremium && (
-                <span style={S.premiumBadge}>
-                  <span>★</span> Premium
-                </span>
+                <span style={S.premiumBadge}>★ Premium</span>
               )}
               <span style={{ ...S.saveIndicator, ...(saveState !== 'idle' ? S.saveVisible : {}) }}>
                 {saveState === 'saving' && <><Spinner /> Saving</>}
                 {saveState === 'saved'  && <><span style={{color:'var(--acid)'}}>✓</span> Saved</>}
                 {saveState === 'error'  && <span style={{color:'var(--red)'}}>✕ Error</span>}
               </span>
+
+              {/* 設定ボタン */}
+              <div style={{ position:'relative' }} ref={styleRef}>
+                <button
+                  style={S.iconBtn}
+                  onClick={() => { setStyleOpen(v => !v); setProfileOpen(false); }}
+                  title="スタイル設定"
+                >
+                  ⚙
+                </button>
+
+                {/* スタイルパネル */}
+                {styleOpen && (
+                  <div style={S.stylePanel}>
+                    <p style={S.panelTitle}>STYLE</p>
+
+                    {/* テーマ */}
+                    <p style={S.panelLabel}>THEME</p>
+                    <div style={S.themeGrid}>
+                      {ALL_THEMES.map(t => {
+                        const locked = t.premium && !isPremium;
+                        return (
+                          <div
+                            key={t.id}
+                            style={{
+                              ...S.themeChip,
+                              ...(style.theme === t.id ? S.themeChipActive : {}),
+                              ...(locked ? S.themeChipLocked : {}),
+                            }}
+                            onClick={() => {
+                              if (locked) { router.push('/premium'); return; }
+                              updateStyle('theme', t.id);
+                            }}
+                          >
+                            {t.accent && (
+                              <span style={{
+                                display:'inline-block', width:10, height:10,
+                                borderRadius:'50%', background:t.accent, marginRight:4,
+                              }} />
+                            )}
+                            {t.label}
+                            {locked && <span style={{ marginLeft:4, fontSize:'0.6rem' }}>🔒</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* カスタムカラー（Premiumのみ） */}
+                    {isPremium && style.theme === 'custom' && (
+                      <>
+                        <div style={S.panelDivider} />
+                        <p style={S.panelLabel}>BACKGROUND</p>
+                        <div style={S.colorRow}>
+                          <input type="color" value={style.customBgStart}
+                            onChange={e => updateStyle('customBgStart', e.target.value)}
+                            style={S.colorPicker} />
+                          <label style={S.toggleRow}>
+                            <input type="checkbox" checked={style.gradientBg}
+                              onChange={e => updateStyle('gradientBg', e.target.checked)}
+                              style={{ accentColor:'var(--acid)' }} />
+                            <span style={{ fontSize:'0.75rem', color:'var(--mid)', marginLeft:6 }}>グラデーション</span>
+                          </label>
+                          {style.gradientBg && (
+                            <input type="color" value={style.customBgEnd}
+                              onChange={e => updateStyle('customBgEnd', e.target.value)}
+                              style={S.colorPicker} />
+                          )}
+                        </div>
+
+                        <p style={S.panelLabel}>ACCENT</p>
+                        <div style={S.colorRow}>
+                          <input type="color" value={style.customAccentStart}
+                            onChange={e => updateStyle('customAccentStart', e.target.value)}
+                            style={S.colorPicker} />
+                          <label style={S.toggleRow}>
+                            <input type="checkbox" checked={style.gradientAccent}
+                              onChange={e => updateStyle('gradientAccent', e.target.checked)}
+                              style={{ accentColor:'var(--acid)' }} />
+                            <span style={{ fontSize:'0.75rem', color:'var(--mid)', marginLeft:6 }}>グラデーション</span>
+                          </label>
+                          {style.gradientAccent && (
+                            <input type="color" value={style.customAccentEnd}
+                              onChange={e => updateStyle('customAccentEnd', e.target.value)}
+                              style={S.colorPicker} />
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {/* フォント（Premiumのみ） */}
+                    {isPremium && (
+                      <>
+                        <div style={S.panelDivider} />
+                        <p style={S.panelLabel}>FONT</p>
+                        <div style={S.fontList}>
+                          {FONTS.map(f => (
+                            <div
+                              key={f.id}
+                              style={{
+                                ...S.fontChip,
+                                ...(style.font === f.id ? S.fontChipActive : {}),
+                                fontFamily: f.css,
+                              }}
+                              onClick={() => updateStyle('font', f.id)}
+                            >
+                              {f.label}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {!isPremium && (
+                      <>
+                        <div style={S.panelDivider} />
+                        <button style={S.upgradeMini} onClick={() => router.push('/premium')}>
+                          ★ Premiumでさらにカスタマイズ
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* プロフィールアイコン */}
               <div style={{ position:'relative' }} ref={profileRef}>
@@ -181,11 +360,10 @@ export default function Dashboard() {
                     src={session.user.image}
                     alt=""
                     style={{ ...S.avatar, cursor:'pointer' }}
-                    onClick={() => setProfileOpen(v => !v)}
+                    onClick={() => { setProfileOpen(v => !v); setStyleOpen(false); }}
                   />
                 )}
 
-                {/* プロフィールパネル */}
                 {profileOpen && (
                   <div style={S.profilePanel}>
                     <div style={S.profileTop}>
@@ -214,12 +392,11 @@ export default function Dashboard() {
 
                     {!isPremium && (
                       <button
-                        style={{ ...S.upgradeBtn, opacity: upgrading ? 0.6 : 1 }}
+                        style={S.upgradeBtn}
                         onClick={handleUpgrade}
-                        disabled={upgrading}
                       >
-                        {upgrading ? '処理中...' : '★ Premiumにアップグレード'}
-                        <span style={S.upgradePrize}>月額300円</span>
+                        ★ Premiumにアップグレード
+                        <span style={S.upgradePrize}>月額300円〜</span>
                       </button>
                     )}
 
@@ -583,6 +760,55 @@ const S = {
   },
   saveVisible: { opacity:1 },
   avatar: { width:26, height:26, borderRadius:'50%', border:'1px solid var(--border2)' },
+  iconBtn: {
+    background:'transparent', border:'1px solid var(--border)',
+    color:'var(--dim)', width:28, height:28, borderRadius:2,
+    display:'flex', alignItems:'center', justifyContent:'center',
+    fontSize:'0.9rem', transition:'all 0.12s',
+  },
+  stylePanel: {
+    position:'absolute', top:'calc(100% + 10px)', right:0,
+    background:'var(--panel)', border:'1px solid var(--border2)',
+    borderRadius:4, padding:'1rem', minWidth:260, zIndex:200,
+    boxShadow:'0 8px 32px rgba(0,0,0,0.5)',
+    animation:'fadeUp 0.15s ease',
+    maxHeight:'80vh', overflowY:'auto',
+  },
+  panelTitle: {
+    fontFamily:'var(--mono)', fontSize:'0.65rem', letterSpacing:'0.2em',
+    color:'var(--acid)', marginBottom:'0.75rem',
+  },
+  panelLabel: {
+    fontFamily:'var(--mono)', fontSize:'0.6rem', color:'var(--dim)',
+    letterSpacing:'0.15em', marginBottom:'0.4rem', marginTop:'0.5rem',
+  },
+  panelDivider: { height:1, background:'var(--border)', margin:'0.75rem 0' },
+  themeGrid: { display:'flex', flexWrap:'wrap', gap:4, marginBottom:'0.25rem' },
+  themeChip: {
+    fontFamily:'var(--mono)', fontSize:'0.7rem',
+    padding:'0.3rem 0.6rem', border:'1px solid var(--border)',
+    borderRadius:2, cursor:'pointer', color:'var(--mid)',
+    display:'flex', alignItems:'center',
+    transition:'all 0.1s',
+  },
+  themeChipActive: { border:'1px solid var(--acid)', color:'var(--text)' },
+  themeChipLocked: { opacity:0.5 },
+  colorRow: { display:'flex', alignItems:'center', gap:8, marginBottom:'0.5rem', flexWrap:'wrap' },
+  colorPicker: { width:32, height:28, border:'none', background:'none', cursor:'pointer', padding:0 },
+  toggleRow: { display:'flex', alignItems:'center', cursor:'pointer' },
+  fontList: { display:'flex', flexDirection:'column', gap:3 },
+  fontChip: {
+    padding:'0.35rem 0.6rem', border:'1px solid var(--border)',
+    borderRadius:2, cursor:'pointer', fontSize:'0.82rem', color:'var(--mid)',
+    transition:'all 0.1s',
+  },
+  fontChipActive: { border:'1px solid var(--acid)', color:'var(--text)' },
+  upgradeMini: {
+    width:'100%', padding:'0.5rem',
+    background:'linear-gradient(135deg, #facc15, #f97316)',
+    border:'none', borderRadius:2, color:'#000',
+    fontWeight:700, fontSize:'0.75rem', cursor:'pointer',
+  },
   profilePanel: {
     position:'absolute', top:'calc(100% + 10px)', right:0,
     background:'var(--panel)', border:'1px solid var(--border2)',
@@ -609,11 +835,6 @@ const S = {
     background:'transparent', border:'1px solid var(--border)',
     color:'var(--dim)', borderRadius:2, fontSize:'0.8rem',
     cursor:'pointer', textAlign:'left',
-  },
-  uname: { fontFamily:'var(--mono)', fontSize:'0.75rem', color:'var(--mid)' },
-  logoutBtn: {
-    background:'transparent', border:'1px solid var(--border2)',
-    color:'var(--dim)', padding:'0.2rem 0.6rem', borderRadius:2, fontSize:'0.75rem',
   },
   main: { maxWidth:960, margin:'0 auto', padding:'2rem 1.5rem' },
   tabNav: { display:'flex', gap:3, marginBottom:'1.25rem', flexWrap:'wrap', alignItems:'center' },
