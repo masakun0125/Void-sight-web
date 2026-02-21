@@ -14,28 +14,23 @@ export default function Login() {
 
   return (
     <>
-      <Head><title>VØID Sight</title></Head>
+      <Head>
+        <title>VØID Sight</title>
+        <link rel="icon" href="/voidsight.png" />
+      </Head>
       <div style={S.root}>
-        {/* グリッドライン */}
         <div style={S.gridH} />
         <div style={S.gridV} />
 
-        {/* スキャンライン演出 */}
         <div style={S.scanWrap}>
           <div style={S.scanLine} />
         </div>
 
         <div style={S.card}>
-          {/* ロゴ */}
           <div style={S.logoWrap}>
-            <div style={S.logoBracket}>{'['}</div>
-            <div style={S.logo}>
-              <span style={{ color: 'var(--voidL)' }}>VØ</span>
-              <span style={{ color: 'var(--acid)' }}>ID</span>
-            </div>
-            <div style={S.logoBracket}>{']'}</div>
+            <img src="/voidsight.png" alt="VOID SIGHT" style={{ height: 36, objectFit: 'contain' }} />
           </div>
-          <p style={S.logoSub}>SIGHT // CLOUD DASHBOARD</p>
+          <p style={S.logoSub}>CLOUD DASHBOARD</p>
 
           <div style={S.sep} />
 
@@ -60,7 +55,6 @@ export default function Login() {
           </p>
         </div>
 
-        {/* コーナーデコ */}
         <Corner pos="tl" />
         <Corner pos="tr" />
         <Corner pos="bl" />
@@ -135,18 +129,12 @@ const S = {
     animation: 'fadeUp 0.4s ease',
   },
   logoWrap: {
-    display: 'flex', alignItems: 'center', gap: '0.5rem',
-    marginBottom: '0.2rem',
-  },
-  logoBracket: {
-    color: 'var(--dim)', fontFamily: 'var(--mono)', fontSize: '1.8rem', lineHeight: 1,
-  },
-  logo: {
-    fontFamily: 'var(--sans)', fontWeight: 800, fontSize: '2rem', letterSpacing: '-0.02em', lineHeight: 1,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    marginBottom: '0.5rem',
   },
   logoSub: {
     fontFamily: 'var(--mono)', fontSize: '0.6rem', color: 'var(--dim)',
-    letterSpacing: '0.2em', marginBottom: '1.5rem',
+    letterSpacing: '0.2em', marginBottom: '1.5rem', textAlign: 'center',
   },
   sep: {
     height: 1, background: 'var(--border2)', marginBottom: '1.5rem',
@@ -159,7 +147,7 @@ const S = {
     width: '100%', padding: '0.8rem',
     background: '#5865F2', color: '#fff', border: 'none',
     fontSize: '0.95rem', fontWeight: 700, letterSpacing: '0.02em',
-    transition: 'all 0.15s',
+    transition: 'all 0.15s', cursor: 'pointer',
   },
   btnHover: { background: '#4752C4', transform: 'translateY(-1px)' },
   note: {
