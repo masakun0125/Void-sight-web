@@ -74,7 +74,7 @@ export default async function handler(req, res) {
       .single();
 
     const isPremium = current?.premium ?? false;
-    const merged = deepMerge(current?.config || {}, sanitize(incoming, isMember));
+    const merged = deepMerge(current?.config || {}, sanitize(incoming, isMember, isPremium));
 
     const { error } = await supabase
       .from('users')
@@ -92,9 +92,29 @@ export default async function handler(req, res) {
   return res.status(405).end();
 }
 
-function sanitize(obj, isMember) {
+function sanitize(obj, isMember, isPremium) {
   const allowed = ['tabFormat', 'sniperAlert', 'colorThresholds', 'nickDetect'];
   if (isMember) allowed.push('tags', 'blacklist', 'friends');
+  // styleは全員保存可能だがPremium限定キーはサーバー側で制限
+  if ('style' in obj) {
+    const style = obj.style;
+    if (style && typeof style === 'object') {
+      const safeStyle = {
+        theme: ['default', 'midnight'].includes(style.theme) ? style.theme : (isPremium ? style.theme : 'default'),
+        font: isPremium ? style.font : 'inter',
+      };
+      if (isPremium) {
+        safeStyle.customBgStart     = style.customBgStart;
+        safeStyle.customBgEnd       = style.customBgEnd;
+        safeStyle.customAccentStart = style.customAccentStart;
+        safeStyle.customAccentEnd   = style.customAccentEnd;
+        safeStyle.gradientBg        = style.gradientBg;
+        safeStyle.gradientAccent    = style.gradientAccent;
+      }
+      obj = { ...obj, style: safeStyle };
+    }
+    allowed.push('style');
+  }
 
   const out = {};
   for (const k of allowed) {
