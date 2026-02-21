@@ -5,13 +5,6 @@ import supabase from '../../../lib/supabase';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-const VALID_PRICES = [
-  process.env.STRIPE_PRICE_30D,
-  process.env.STRIPE_PRICE_90D,
-  process.env.STRIPE_PRICE_180D,
-  process.env.STRIPE_PRICE_1Y,
-];
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
@@ -19,13 +12,22 @@ export default async function handler(req, res) {
   if (!session?.discordId) return res.status(401).json({ error: 'Unauthorized' });
 
   const { priceId } = req.body;
-
-  // priceIdが未指定の場合は30日プランをデフォルトに
   const resolvedPriceId = priceId || process.env.STRIPE_PRICE_30D;
 
-  // 不正なpriceIdを弾く
+  console.log('priceId from body:', priceId);
+  console.log('resolvedPriceId:', resolvedPriceId);
+
+  const VALID_PRICES = [
+    process.env.STRIPE_PRICE_30D,
+    process.env.STRIPE_PRICE_90D,
+    process.env.STRIPE_PRICE_180D,
+    process.env.STRIPE_PRICE_1Y,
+  ];
+
+  console.log('VALID_PRICES:', VALID_PRICES);
+
   if (!VALID_PRICES.includes(resolvedPriceId)) {
-    return res.status(400).json({ error: 'Invalid price ID' });
+    return res.status(400).json({ error: 'Invalid price ID', resolvedPriceId, VALID_PRICES });
   }
 
   const { data: user } = await supabase
