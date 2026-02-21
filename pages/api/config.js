@@ -1,23 +1,14 @@
-// GET  /api/config  → 設定取得（ロール情報も返す）
-// POST /api/config  → 設定保存（ロール制限あり）
-// 認証: Bearerトークン（ローカルVØID）またはセッション（Web）
-
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from './auth/[...nextauth]';
 import supabase from '../../lib/supabase';
 
-// 環境変数からロール名を取得（未設定時はデフォルト）
 const MEMBER_ROLE = process.env.DISCORD_MEMBER_ROLE || 'Member';
-
-// ロールが必要な設定キー
 const ROLE_GATED_KEYS = ['tags', 'blacklist', 'friends'];
 
 export default async function handler(req, res) {
-  // ── 認証 ────────────────────────────────────────────────
   let discordId = null;
   let userRoles = [];
 
-  // 1. Bearerトークン（ローカルVØID Sight）
   const auth = req.headers.authorization || '';
   if (auth.startsWith('Bearer ')) {
     const token = auth.slice(7);
@@ -28,7 +19,6 @@ export default async function handler(req, res) {
       .single();
     if (tokenRow) {
       discordId = tokenRow.discord_id;
-      // ロール取得
       const { data: u } = await supabase
         .from('users')
         .select('roles')
@@ -38,12 +28,11 @@ export default async function handler(req, res) {
     }
   }
 
-  // 2. セッション（Webダッシュボード）
   if (!discordId) {
     const session = await getServerSession(req, res, authOptions);
     if (session?.discordId) {
-      discordId  = session.discordId;
-      userRoles  = session.roles || [];
+      discordId = session.discordId;
+      userRoles = session.roles || [];
     }
   }
 
@@ -51,29 +40,28 @@ export default async function handler(req, res) {
 
   const isMember = userRoles.includes(MEMBER_ROLE);
 
-  // ── GET ─────────────────────────────────────────────────
   if (req.method === 'GET') {
     const { data, error } = await supabase
       .from('users')
-      .select('config, roles')
+      .select('config, roles, premium')
       .eq('discord_id', discordId)
       .single();
 
     if (error || !data) return res.status(404).json({ error: 'User not found' });
 
+    const isPremium = data.premium ?? false;
+
     return res.status(200).json({
       ...data.config,
-      _meta: { isMember, roles: userRoles },
+      _meta: { isMember, isPremium, roles: userRoles },
     });
   }
 
-  // ── POST ────────────────────────────────────────────────
   if (req.method === 'POST') {
     const incoming = req.body;
     if (!incoming || typeof incoming !== 'object')
       return res.status(400).json({ error: 'Invalid body' });
 
-    // ロールが必要なキーを非メンバーが送ってきたら403
     const hasGatedKey = ROLE_GATED_KEYS.some(k => k in incoming);
     if (hasGatedKey && !isMember) {
       return res.status(403).json({ error: `Role "${MEMBER_ROLE}" required` });
@@ -81,10 +69,11 @@ export default async function handler(req, res) {
 
     const { data: current } = await supabase
       .from('users')
-      .select('config')
+      .select('config, premium')
       .eq('discord_id', discordId)
       .single();
 
+    const isPremium = current?.premium ?? false;
     const merged = deepMerge(current?.config || {}, sanitize(incoming, isMember));
 
     const { error } = await supabase
@@ -96,7 +85,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       ...merged,
-      _meta: { isMember, roles: userRoles },
+      _meta: { isMember, isPremium, roles: userRoles },
     });
   }
 
@@ -104,10 +93,8 @@ export default async function handler(req, res) {
 }
 
 function sanitize(obj, isMember) {
-  // 全員が変更できる項目
   const allowed = ['tabFormat', 'sniperAlert', 'colorThresholds', 'nickDetect'];
-  // メンバーのみ変更できる項目
-  if (isMember) allowed.push(...ROLE_GATED_KEYS);
+  if (isMember) allowed.push('tags', 'blacklist', 'friends');
 
   const out = {};
   for (const k of allowed) {
