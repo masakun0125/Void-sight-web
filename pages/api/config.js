@@ -93,9 +93,8 @@ export default async function handler(req, res) {
 }
 
 function sanitize(obj, isMember, isPremium) {
-  const allowed = ['tabFormat', 'sniperAlert', 'colorThresholds', 'nickDetect'];
+  const allowed = ['tabFormat', 'sniperAlert', 'colorThresholds', 'nickDetect', 'style'];
   if (isMember) allowed.push('tags', 'blacklist', 'friends');
-  allowed.push('style');
 
   const out = {};
   for (const k of allowed) {
@@ -104,19 +103,20 @@ function sanitize(obj, isMember, isPremium) {
 
   if (out.style && typeof out.style === 'object') {
     const s = out.style;
+    const validFreeThemes = ['default', 'midnight'];
     out.style = {
-      theme: isPremium
+      theme: validFreeThemes.includes(s.theme)
         ? s.theme
-        : (['default', 'midnight'].includes(s.theme) ? s.theme : 'default'),
-      font: isPremium ? s.font : 'inter',
-      ...(isPremium ? {
-        customBgStart:     s.customBgStart,
-        customBgEnd:       s.customBgEnd,
-        customAccentStart: s.customAccentStart,
-        customAccentEnd:   s.customAccentEnd,
-        gradientBg:        s.gradientBg,
-        gradientAccent:    s.gradientAccent,
-      } : {}),
+        : (isPremium ? s.theme : 'default'),
+      font: isPremium ? (s.font || 'inter') : 'inter',
+      ...(isPremium && {
+        customBgStart:     s.customBgStart     || '#070709',
+        customBgEnd:       s.customBgEnd       || '#070709',
+        customAccentStart: s.customAccentStart || '#b5f23d',
+        customAccentEnd:   s.customAccentEnd   || '#b5f23d',
+        gradientBg:        s.gradientBg        || false,
+        gradientAccent:    s.gradientAccent    || false,
+      }),
     };
   }
 
