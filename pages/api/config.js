@@ -93,7 +93,7 @@ export default async function handler(req, res) {
 }
 
 function sanitize(obj, isMember, isPremium) {
-  const allowed = ['tabFormat', 'sniperAlert', 'colorThresholds', 'nickDetect', 'style'];
+  const allowed = ['tabFormat', 'tabFormatCustom', 'sniperAlert', 'colorThresholds', 'nickDetect', 'style', 'autoWho', 'autoGl', 'autoGlMsg', 'autoGg', 'autoGgMsg'];
   if (isMember) allowed.push('tags', 'blacklist', 'friends');
 
   const out = {};
