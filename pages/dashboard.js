@@ -21,7 +21,13 @@ const COLOR_OPTS = [
 
 const DEFAULT_CFG = {
   tabFormat: 1,
+  tabFormatCustom: '{rank} {stars} {name} | {fkdr} {tag}',
   nickDetect: true,
+  autoWho: false,
+  autoGl: false,
+  autoGlMsg: 'gl',
+  autoGg: false,
+  autoGgMsg: 'gg',
   sniperAlert: { minFkdr: 5, minStars: 200 },
   colorThresholds: {
     fkdr:[{min:0,color:'§a'},{min:2,color:'§e'},{min:5,color:'§6'},{min:10,color:'§c'}],
@@ -33,6 +39,7 @@ const DEFAULT_CFG = {
 
 const TABS = [
   { id:'display',  label:'Display' },
+  { id:'auto',     label:'Auto' },
   { id:'alert',    label:'Sniper Alert' },
   { id:'colors',   label:'Colors' },
   { id:'tags',     label:'Tags & Lists', memberOnly: true },
@@ -40,7 +47,6 @@ const TABS = [
 ];
 
 const FREE_THEMES = ['default', 'midnight'];
-const PREMIUM_THEMES = ['blood', 'ghost', 'gold', 'custom'];
 const ALL_THEMES = [
   { id:'default',  label:'Default',  accent:'#b5f23d', bg:'#070709' },
   { id:'midnight', label:'Midnight', accent:'#a78bfa', bg:'#06061a' },
@@ -51,11 +57,11 @@ const ALL_THEMES = [
 ];
 
 const FONTS = [
-  { id:'inter',        label:'Inter',         css:"'Inter', system-ui, sans-serif" },
-  { id:'jetbrains',    label:'JetBrains Mono',css:"'JetBrains Mono', monospace" },
-  { id:'orbitron',     label:'Orbitron',      css:"'Orbitron', sans-serif" },
-  { id:'rajdhani',     label:'Rajdhani',      css:"'Rajdhani', sans-serif" },
-  { id:'exo2',         label:'Exo 2',         css:"'Exo 2', sans-serif" },
+  { id:'inter',     label:'Inter',          css:"'Inter', system-ui, sans-serif" },
+  { id:'jetbrains', label:'JetBrains Mono', css:"'JetBrains Mono', monospace" },
+  { id:'orbitron',  label:'Orbitron',       css:"'Orbitron', sans-serif" },
+  { id:'rajdhani',  label:'Rajdhani',       css:"'Rajdhani', sans-serif" },
+  { id:'exo2',      label:'Exo 2',          css:"'Exo 2', sans-serif" },
 ];
 
 const DEFAULT_STYLE = {
@@ -94,7 +100,6 @@ export default function Dashboard() {
     if (status === 'authenticated')   load();
   }, [status]);
 
-  // 外クリックで閉じる
   useEffect(() => {
     function handleClick(e) {
       if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
@@ -104,7 +109,6 @@ export default function Dashboard() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // upgraded=true
   useEffect(() => {
     if (router.query.upgraded === 'true') {
       load();
@@ -112,7 +116,6 @@ export default function Dashboard() {
     }
   }, [router.query]);
 
-  // スタイル適用
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute('data-theme', style.theme);
@@ -123,7 +126,6 @@ export default function Dashboard() {
       root.style.setProperty('--custom-accent-start', style.customAccentStart);
       root.style.setProperty('--custom-accent-end',   style.gradientAccent ? style.customAccentEnd : style.customAccentStart);
     }
-    // bg gradient
     if (style.gradientBg && style.theme !== 'custom') {
       root.style.setProperty('--bg-end', style.customBgEnd);
     }
@@ -230,7 +232,6 @@ export default function Dashboard() {
                 {saveState === 'error'  && <span style={{color:'var(--red)'}}>✕ Error</span>}
               </span>
 
-              {/* 設定ボタン */}
               <div style={{ position:'relative' }} ref={styleRef}>
                 <button
                   style={S.iconBtn}
@@ -240,12 +241,10 @@ export default function Dashboard() {
                   ⚙
                 </button>
 
-                {/* スタイルパネル */}
                 {styleOpen && (
                   <div style={S.stylePanel}>
                     <p style={S.panelTitle}>STYLE</p>
 
-                    {/* テーマ */}
                     <p style={S.panelLabel}>THEME</p>
                     <div style={S.themeGrid}>
                       {ALL_THEMES.map(t => {
@@ -276,7 +275,6 @@ export default function Dashboard() {
                       })}
                     </div>
 
-                    {/* カスタムカラー（Premiumのみ） */}
                     {isPremium && style.theme === 'custom' && (
                       <>
                         <div style={S.panelDivider} />
@@ -318,7 +316,6 @@ export default function Dashboard() {
                       </>
                     )}
 
-                    {/* フォント（Premiumのみ） */}
                     {isPremium && (
                       <>
                         <div style={S.panelDivider} />
@@ -353,7 +350,6 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {/* プロフィールアイコン */}
               <div style={{ position:'relative' }} ref={profileRef}>
                 {session.user?.image && (
                   <img
@@ -391,10 +387,7 @@ export default function Dashboard() {
                     <div style={S.profileDivider} />
 
                     {!isPremium && (
-                      <button
-                        style={S.upgradeBtn}
-                        onClick={handleUpgrade}
-                      >
+                      <button style={S.upgradeBtn} onClick={handleUpgrade}>
                         ★ Premiumにアップグレード
                         <span style={S.upgradePrize}>月額300円〜</span>
                       </button>
@@ -435,8 +428,10 @@ export default function Dashboard() {
 
           <div style={S.panel}>
 
+            {/* ── Display ── */}
             {activeTab === 'display' && (
-              <Section title="TAB_FORMAT" desc="BedWarsのタブ表示フォーマット">
+              <Section title="DISPLAY" desc="オーバーレイの表示設定">
+                <p style={S.subSectionLabel}>TAB_FORMAT</p>
                 {[
                   { n:1, label:'{rank} {stars} {name} | {fkdr} {tag}' },
                   { n:2, label:'{stars} {name} | {fkdr} {tag}' },
@@ -450,16 +445,132 @@ export default function Dashboard() {
                     <code style={S.code}>{p.label}</code>
                   </label>
                 ))}
-                <label style={S.checkRow}>
-                  <input type="checkbox" checked={cfg.nickDetect}
-                    onChange={e => update('nickDetect', e.target.checked)}
-                    style={{ accentColor:'var(--acid)', width:14, height:14 }} />
-                  <span style={{ marginLeft:8 }}>Nick Detection</span>
-                  <span style={S.hint}>ニックの可能性があるプレイヤーを §d[NICK?] で表示</span>
-                </label>
+
+                {isPremium && (
+                  <div style={{ marginTop:'0.75rem' }}>
+                    <label style={{ ...S.radioRow, ...(cfg.tabFormat===0 ? S.radioRowActive:{}) }}>
+                      <input type="radio" name="fmt" checked={cfg.tabFormat===0}
+                        onChange={() => update('tabFormat', 0)}
+                        style={{ accentColor:'var(--acid)' }} />
+                      <span style={S.radioN}>✦</span>
+                      <span style={{ fontSize:'0.78rem', color:'var(--mid)' }}>カスタム</span>
+                    </label>
+                    {cfg.tabFormat === 0 && (
+                      <input
+                        style={{ ...S.txtIn, marginTop:6, fontFamily:'var(--mono)', fontSize:'0.8rem' }}
+                        value={cfg.tabFormatCustom || ''}
+                        placeholder="{rank} {stars} {name} | {fkdr} {tag}"
+                        onChange={e => update('tabFormatCustom', e.target.value)}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {!isPremium && (
+                  <p style={{ ...S.hint, marginTop:'0.5rem' }}>
+                    <span style={{ color:'#facc15' }}>★</span> Premiumでカスタム書式が使えます
+                  </p>
+                )}
+
+                <div style={{ marginTop:'1rem' }}>
+                  <label style={S.checkRow}>
+                    <input type="checkbox" checked={cfg.nickDetect}
+                      onChange={e => update('nickDetect', e.target.checked)}
+                      style={{ accentColor:'var(--acid)', width:14, height:14 }} />
+                    <span style={{ marginLeft:8 }}>Nick Detection</span>
+                    <span style={S.hint}>ニックの可能性があるプレイヤーを §d[NICK?] で表示</span>
+                  </label>
+                </div>
               </Section>
             )}
 
+            {/* ── Auto ── */}
+            {activeTab === 'auto' && (
+              <Section title="AUTO" desc="自動コマンド・メッセージの設定">
+
+                {/* Auto WHO */}
+                <div style={S.autoRow}>
+                  <div style={S.autoLeft}>
+                    <p style={S.autoLabel}>AUTO_WHO</p>
+                    <p style={S.autoDesc}>ゲーム開始時に /who を自動実行</p>
+                  </div>
+                  <Toggle
+                    checked={cfg.autoWho}
+                    onChange={v => update('autoWho', v)}
+                  />
+                </div>
+
+                <div style={S.autoDivider} />
+
+                {/* Auto GL */}
+                <div style={S.autoRow}>
+                  <div style={S.autoLeft}>
+                    <p style={S.autoLabel}>AUTO_GL</p>
+                    <p style={S.autoDesc}>ゲーム開始時に自動でメッセージを送信</p>
+                  </div>
+                  <Toggle
+                    checked={cfg.autoGl}
+                    onChange={v => update('autoGl', v)}
+                  />
+                </div>
+                {cfg.autoGl && (
+                  <div style={S.autoMsgBox}>
+                    <label style={S.autoMsgLabel}>MESSAGE</label>
+                    {isPremium ? (
+                      <input
+                        style={S.txtIn}
+                        value={cfg.autoGlMsg || 'gl'}
+                        onChange={e => update('autoGlMsg', e.target.value)}
+                        placeholder="gl"
+                      />
+                    ) : (
+                      <div style={S.autoMsgLocked}>
+                        <code style={S.code}>gl</code>
+                        <span style={S.premiumHint}>
+                          <span style={{ color:'#facc15' }}>★</span> Premiumでカスタマイズ可能
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div style={S.autoDivider} />
+
+                {/* Auto GG */}
+                <div style={S.autoRow}>
+                  <div style={S.autoLeft}>
+                    <p style={S.autoLabel}>AUTO_GG</p>
+                    <p style={S.autoDesc}>ゲーム終了時に自動でメッセージを送信</p>
+                  </div>
+                  <Toggle
+                    checked={cfg.autoGg}
+                    onChange={v => update('autoGg', v)}
+                  />
+                </div>
+                {cfg.autoGg && (
+                  <div style={S.autoMsgBox}>
+                    <label style={S.autoMsgLabel}>MESSAGE</label>
+                    {isPremium ? (
+                      <input
+                        style={S.txtIn}
+                        value={cfg.autoGgMsg || 'gg'}
+                        onChange={e => update('autoGgMsg', e.target.value)}
+                        placeholder="gg"
+                      />
+                    ) : (
+                      <div style={S.autoMsgLocked}>
+                        <code style={S.code}>gg</code>
+                        <span style={S.premiumHint}>
+                          <span style={{ color:'#facc15' }}>★</span> Premiumでカスタマイズ可能
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Section>
+            )}
+
+            {/* ── Sniper Alert ── */}
             {activeTab === 'alert' && (
               <Section title="SNIPER_ALERT" desc="強プレイヤーが入ったときにチャットで通知する閾値">
                 <div style={S.row2}>
@@ -480,6 +591,7 @@ export default function Dashboard() {
               </Section>
             )}
 
+            {/* ── Colors ── */}
             {activeTab === 'colors' && (
               <Section title="COLOR_THRESHOLDS" desc="統計値の範囲に応じた色設定">
                 {['fkdr','wlr','kdr'].map(stat => (
@@ -525,6 +637,7 @@ export default function Dashboard() {
               </Section>
             )}
 
+            {/* ── Tags & Lists ── */}
             {activeTab === 'tags' && isMember && (
               <Section title="TAGS_AND_LISTS" desc="プレイヤーへのタグ・BL・フレンド管理">
                 <SubSection title="TAGS">
@@ -622,6 +735,7 @@ export default function Dashboard() {
               </Section>
             )}
 
+            {/* ── Token ── */}
             {activeTab === 'token' && (
               <Section title="LOCAL_TOKEN" desc="VØID SightのローカルクライアントとWebを接続するトークン">
                 <p style={S.desc2}>
@@ -668,6 +782,24 @@ function Loading() {
 }
 function Spinner() {
   return <span style={{ display:'inline-block', animation:'pulse 0.8s linear infinite' }}>◌</span>;
+}
+function Toggle({ checked, onChange }) {
+  return (
+    <div
+      onClick={() => onChange(!checked)}
+      style={{
+        width:44, height:24, borderRadius:12, cursor:'pointer',
+        background: checked ? 'var(--acid)' : 'var(--border2)',
+        position:'relative', transition:'background 0.2s', flexShrink:0,
+      }}
+    >
+      <div style={{
+        position:'absolute', top:3, left: checked ? 23 : 3,
+        width:18, height:18, borderRadius:'50%',
+        background:'#fff', transition:'left 0.2s',
+      }} />
+    </div>
+  );
 }
 function Section({ title, desc, children }) {
   return (
@@ -857,6 +989,31 @@ const S = {
     background:'var(--panel)', border:'1px solid var(--border)',
     borderRadius:4, padding:'2rem',
   },
+  subSectionLabel: {
+    fontFamily:'var(--mono)', fontSize:'0.6rem', color:'var(--dim)',
+    letterSpacing:'0.15em', marginBottom:'0.6rem',
+  },
+  autoRow: {
+    display:'flex', alignItems:'center', justifyContent:'space-between',
+    padding:'0.5rem 0',
+  },
+  autoLeft: { flex:1 },
+  autoLabel: {
+    fontFamily:'var(--mono)', fontSize:'0.75rem', color:'var(--text)',
+    letterSpacing:'0.1em', marginBottom:2,
+  },
+  autoDesc: { fontSize:'0.78rem', color:'var(--dim)' },
+  autoDivider: { height:1, background:'var(--border)', margin:'0.75rem 0' },
+  autoMsgBox: {
+    background:'var(--surface)', border:'1px solid var(--border)',
+    borderRadius:3, padding:'0.75rem', marginBottom:'0.5rem',
+  },
+  autoMsgLabel: {
+    fontFamily:'var(--mono)', fontSize:'0.6rem', color:'var(--dim)',
+    letterSpacing:'0.15em', display:'block', marginBottom:'0.4rem',
+  },
+  autoMsgLocked: { display:'flex', alignItems:'center', gap:8 },
+  premiumHint: { fontSize:'0.72rem', color:'var(--dim)', fontFamily:'var(--mono)' },
   radioRow: {
     display:'flex', alignItems:'center', gap:10,
     padding:'0.55rem 0.75rem', marginBottom:4,
