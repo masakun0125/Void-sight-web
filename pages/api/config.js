@@ -93,6 +93,8 @@ export default async function handler(req, res) {
 }
 
 function sanitize(obj, isMember, isPremium) {
+  console.log('sanitize input:', JSON.stringify(obj).slice(0, 200));
+  console.log('isMember:', isMember, 'isPremium:', isPremium);
   const allowed = ['tabFormat', 'tabFormatCustom', 'sniperAlert', 'colorThresholds', 'nickDetect', 'style', 'autoWho', 'autoGl', 'autoGlMsg', 'autoGg', 'autoGgMsg'];
   if (isMember) allowed.push('tags', 'blacklist', 'friends');
 
